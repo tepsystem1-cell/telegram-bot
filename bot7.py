@@ -1,40 +1,46 @@
+import os
 import asyncio
-from aiogram import Bot, Dispatcher
-from aiogram.types import Message
-from aiogram.filters import CommandStart
+from aiogram import Bot, Dispatcher, types
+from aiogram.filters import Command
 from openai import OpenAI
 
-# 🔴 ВСТАВЬ СЮДА ТОКЕН БОТА
-BOT_TOKEN = "8539257046:AAGr1IjkC3YiEcssnZOVWhd1aBpS8ivaRRo"
+# берём ключи из Railway
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-# 🔴 ВСТАВЬ СЮДА API КЛЮЧ OPENAI
-client = OpenAI(api_key="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")
-
+# инициализация
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
+client = OpenAI(api_key=OPENAI_API_KEY)
 
-@dp.message(CommandStart())
-async def start(message: Message):
-    await message.answer("Привет 👋 Напиши вопрос")
 
+# команда /start
+@dp.message(Command("start"))
+async def start(message: types.Message):
+    await message.answer("Привет! Напиши любой вопрос 🙂")
+
+
+# обработка всех сообщений
 @dp.message()
-async def ai_answer(message: Message):
+async def handle_message(message: types.Message):
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": message.text}]
+        response = client.responses.create(
+            model="gpt-4.1-mini",
+            input=message.text
         )
 
-        answer = response.choices[0].message.content
-
+        answer = response.output[0].content[0].text
         await message.answer(answer)
 
     except Exception as e:
-        print("ОШИБКА:", e)  # 👈 ВАЖНО
-        await message.answer("Ошибка 😔 смотри консоль")
+        await message.answer(f"Ошибка: {e}")
 
+
+# запуск
 async def main():
+    print("Бот запущен 🚀")
     await dp.start_polling(bot)
+
 
 if __name__ == "__main__":
     asyncio.run(main())
