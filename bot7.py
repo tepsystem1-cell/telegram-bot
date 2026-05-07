@@ -19,7 +19,13 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 FREE_LIMIT = 7
 
 # 🗄️ SQLite база
-conn = sqlite3.connect("users.db")
+conn = sqlite3.connect(
+    "users.db",
+    check_same_thread=False
+)
+
+conn.row_factory = sqlite3.Row
+
 cursor = conn.cursor()
 
 # 👥 Таблица пользователей
@@ -108,7 +114,7 @@ async def limit_command(message: types.Message):
         requests_count = 0
 
     else:
-        requests_count = user[0]
+        requests_count = user["requests"]
 
     left = FREE_LIMIT - requests_count
 
@@ -153,12 +159,12 @@ async def invite_command(message: types.Message):
     )
 
 # 🧠 AI ОТВЕТЫ
-@dp.message(lambda message: not message.text.startswith("/"))
+@dp.message(lambda message: message.text and not message.text.startswith("/"))
 async def handle_message(message: types.Message):
 
     user_id = message.from_user.id
 
-    # 🔍 Ищем пользователя
+    # 🔍 Проверяем пользователя
     cursor.execute(
         "SELECT requests, premium FROM users WHERE user_id=?",
         (user_id,)
@@ -180,8 +186,8 @@ async def handle_message(message: types.Message):
         premium = 0
 
     else:
-        requests_count = user[0]
-        premium = user[1]
+        requests_count = user["requests"]
+        premium = user["premium"]
 
     # ⛔ Проверка лимита
     if requests_count >= FREE_LIMIT and premium == 0:
@@ -214,7 +220,7 @@ async def handle_message(message: types.Message):
 
         answer = response.output[0].content[0].text
 
-        # ➕ Увеличиваем запросы
+        # ➕ Обновляем счётчик
         cursor.execute(
             "UPDATE users SET requests = requests + 1 WHERE user_id=?",
             (user_id,)
