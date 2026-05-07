@@ -1,22 +1,3 @@
-Похоже, у тебя была включена английская раскладка.
-Ты написал:
-
-```text id="s1"
-ghbikb yjdsq rjl wtkbrjv
-```
-
-Это читается как:
-
-```text id="s2"
-пришли новый код целиком
-```
-
-Вот полный обновлённый код с тарифами:
-
-* 2.5 USDT → 100 запросов / 1 месяц
-* 6 USDT → 400 запросов / 3 месяца
-
-```python id="s3"
 import os
 import asyncio
 import sqlite3
@@ -28,12 +9,12 @@ from openai import OpenAI
 
 from aiocryptopay import AioCryptoPay, Networks
 
-# 🔑 TOKENS
+# TOKENS
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 CRYPTO_PAY_TOKEN = os.getenv("CRYPTO_PAY_TOKEN")
 
-# 🤖 BOT
+# BOT
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
@@ -46,10 +27,10 @@ crypto = AioCryptoPay(
     network=Networks.MAIN_NET
 )
 
-# 🎁 FREE LIMIT
+# FREE LIMIT
 FREE_LIMIT = 7
 
-# 🗄 DATABASE
+# DATABASE
 conn = sqlite3.connect(
     "users.db",
     check_same_thread=False
@@ -58,7 +39,7 @@ conn = sqlite3.connect(
 conn.row_factory = sqlite3.Row
 cursor = conn.cursor()
 
-# 👤 USERS
+# USERS TABLE
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS users (
     user_id INTEGER PRIMARY KEY,
@@ -69,7 +50,7 @@ CREATE TABLE IF NOT EXISTS users (
 )
 """)
 
-# 💳 INVOICES
+# INVOICES TABLE
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS invoices (
     invoice_id INTEGER,
@@ -80,23 +61,23 @@ CREATE TABLE IF NOT EXISTS invoices (
 
 conn.commit()
 
-# 🚀 START
+# START
 @dp.message(Command("start"))
 async def start(message: types.Message):
 
     await message.answer(
-        "🎓 Reshala Study Bot\n\n"
-        "📚 Объясняю темы\n"
-        "🧮 Решаю задачи\n"
-        "📝 Делаю конспекты\n\n"
-        "🎁 Бесплатно: 7 запросов\n\n"
-        "💎 Тарифы:\n"
-        "• 2.5 USDT → 100 запросов / 1 месяц\n"
-        "• 6 USDT → 400 запросов / 3 месяца\n\n"
-        "💳 Для покупки используй /pay"
+        "Reshala Study Bot\n\n"
+        "Объясняю темы\n"
+        "Решаю задачи\n"
+        "Делаю конспекты\n\n"
+        "Бесплатно: 7 запросов\n\n"
+        "Тарифы:\n"
+        "2.5 USDT - 100 запросов / 1 месяц\n"
+        "6 USDT - 400 запросов / 3 месяца\n\n"
+        "Для покупки используй /pay"
     )
 
-# 📊 STATUS
+# STATUS
 @dp.message(Command("status"))
 async def status(message: types.Message):
 
@@ -112,7 +93,7 @@ async def status(message: types.Message):
     if user is None:
 
         await message.answer(
-            "🎁 Бесплатный аккаунт\n"
+            f"Бесплатный аккаунт\n"
             f"Осталось запросов: {FREE_LIMIT}"
         )
 
@@ -124,13 +105,13 @@ async def status(message: types.Message):
         free_left = 0
 
     await message.answer(
-        f"👤 Тариф: {user['tariff']}\n\n"
-        f"🎁 Бесплатных запросов: {free_left}\n"
-        f"💎 Premium запросов: {user['paid_requests']}\n"
-        f"📅 Premium до: {user['premium_until']}"
+        f"Тариф: {user['tariff']}\n\n"
+        f"Бесплатных запросов: {free_left}\n"
+        f"Premium запросов: {user['paid_requests']}\n"
+        f"Premium до: {user['premium_until']}"
     )
 
-# 💳 PAY
+# PAY
 @dp.message(Command("pay"))
 async def pay(message: types.Message):
 
@@ -138,13 +119,13 @@ async def pay(message: types.Message):
         inline_keyboard=[
             [
                 types.InlineKeyboardButton(
-                    text="💎 100 запросов / 1 месяц — 2.5 USDT",
+                    text="100 запросов / 1 месяц - 2.5 USDT",
                     callback_data="buy_start"
                 )
             ],
             [
                 types.InlineKeyboardButton(
-                    text="🚀 400 запросов / 3 месяца — 6 USDT",
+                    text="400 запросов / 3 месяца - 6 USDT",
                     callback_data="buy_pro"
                 )
             ]
@@ -152,11 +133,11 @@ async def pay(message: types.Message):
     )
 
     await message.answer(
-        "💳 Выбери тариф:",
+        "Выбери тариф:",
         reply_markup=keyboard
     )
 
-# 💎 START PLAN
+# START PLAN
 @dp.callback_query(lambda c: c.data == "buy_start")
 async def buy_start(callback: types.CallbackQuery):
 
@@ -181,7 +162,7 @@ async def buy_start(callback: types.CallbackQuery):
         inline_keyboard=[
             [
                 types.InlineKeyboardButton(
-                    text="💳 Оплатить",
+                    text="Оплатить",
                     url=invoice.bot_invoice_url
                 )
             ]
@@ -189,11 +170,11 @@ async def buy_start(callback: types.CallbackQuery):
     )
 
     await callback.message.answer(
-        "💎 Нажми кнопку для оплаты START тарифа",
+        "Нажми кнопку для оплаты START тарифа",
         reply_markup=keyboard
     )
 
-# 🚀 PRO PLAN
+# PRO PLAN
 @dp.callback_query(lambda c: c.data == "buy_pro")
 async def buy_pro(callback: types.CallbackQuery):
 
@@ -218,7 +199,7 @@ async def buy_pro(callback: types.CallbackQuery):
         inline_keyboard=[
             [
                 types.InlineKeyboardButton(
-                    text="💳 Оплатить",
+                    text="Оплатить",
                     url=invoice.bot_invoice_url
                 )
             ]
@@ -226,11 +207,11 @@ async def buy_pro(callback: types.CallbackQuery):
     )
 
     await callback.message.answer(
-        "🚀 Нажми кнопку для оплаты PRO тарифа",
+        "Нажми кнопку для оплаты PRO тарифа",
         reply_markup=keyboard
     )
 
-# ✅ CHECK PAYMENT
+# CHECK PAYMENT
 @dp.message(Command("check"))
 async def check(message: types.Message):
 
@@ -257,7 +238,7 @@ async def check(message: types.Message):
 
         tariff = db_invoice["tariff"]
 
-        # 💎 START
+        # START
         if tariff == "START":
 
             premium_until = (
@@ -276,7 +257,7 @@ async def check(message: types.Message):
                 user_id
             ))
 
-        # 🚀 PRO
+        # PRO
         elif tariff == "PRO":
 
             premium_until = (
@@ -298,17 +279,17 @@ async def check(message: types.Message):
         conn.commit()
 
         await message.answer(
-            "✅ Оплата найдена!\n\n"
-            "Premium активирован 🚀"
+            "Оплата найдена!\n\n"
+            "Premium активирован"
         )
 
         return
 
     await message.answer(
-        "❌ Оплата пока не найдена"
+        "Оплата пока не найдена"
     )
 
-# 🤖 AI
+# AI
 @dp.message(lambda message: message.text and not message.text.startswith("/"))
 async def ai(message: types.Message):
 
@@ -321,7 +302,7 @@ async def ai(message: types.Message):
 
     user = cursor.fetchone()
 
-    # 👤 NEW USER
+    # NEW USER
     if user is None:
 
         cursor.execute("""
@@ -350,7 +331,7 @@ async def ai(message: types.Message):
 
         user = cursor.fetchone()
 
-    # 📅 PREMIUM CHECK
+    # PREMIUM CHECK
     premium_active = False
 
     if user["premium_until"]:
@@ -368,7 +349,7 @@ async def ai(message: types.Message):
         except:
             pass
 
-    # 💎 PREMIUM REQUESTS
+    # PREMIUM REQUESTS
     if premium_active and user["paid_requests"] > 0:
 
         cursor.execute("""
@@ -381,12 +362,12 @@ async def ai(message: types.Message):
 
     else:
 
-        # 🎁 FREE LIMIT
+        # FREE LIMIT
         if user["free_requests"] >= FREE_LIMIT:
 
             await message.answer(
-                "⛔ Лимит закончился\n\n"
-                "💳 Используй /pay"
+                "Лимит закончился\n\n"
+                "Используй /pay"
             )
 
             return
@@ -399,7 +380,7 @@ async def ai(message: types.Message):
 
         conn.commit()
 
-    # 🧠 OPENAI
+    # OPENAI
     try:
 
         response = client.responses.create(
@@ -429,13 +410,12 @@ async def ai(message: types.Message):
             f"Ошибка: {e}"
         )
 
-# 🚀 RUN
+# RUN
 async def main():
 
-    print("Бот запущен 🚀")
+    print("Бот запущен")
 
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
     asyncio.run(main())
-```
