@@ -1,5 +1,7 @@
 import os
 import asyncio
+import sqlite3
+
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from openai import OpenAI
@@ -16,8 +18,20 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 # 🎁 Бесплатный лимит
 FREE_LIMIT = 7
 
-# 👤 Память пользователей
-user_requests = {}
+# 🗄️ SQLite база
+conn = sqlite3.connect("users.db")
+cursor = conn.cursor()
+
+# 👥 Таблица пользователей
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS users (
+    user_id INTEGER PRIMARY KEY,
+    requests INTEGER DEFAULT 0,
+    premium INTEGER DEFAULT 0
+)
+""")
+
+conn.commit()
 
 # 🚀 START
 @dp.message(Command("start"))
@@ -28,7 +42,8 @@ async def start(message: types.Message):
         "🧮 Решаю задачи\n"
         "📝 Делаю конспекты\n\n"
         f"🎁 Бесплатно доступно {FREE_LIMIT} запросов\n\n"
-        "👇 Нажми Menu возле строки ввода"
+        "👇 Нажми Menu возле строки ввода",
+        reply_markup=types.ReplyKeyboardRemove()
     )
 
 # ℹ️ HELP
@@ -66,10 +81,20 @@ async def pay_command(message: types.Message):
 # 📊 LIMIT
 @dp.message(Command("limit"))
 async def limit_command(message: types.Message):
+
     user_id = message.from_user.id
 
-    count = user_requests.get(user_id, 0)
-    left = FREE_LIMIT - count
+    cursor.execute(
+        "SELECT requests FROM users WHERE user_id=?",
+        (user_id,)
+    )
+
+    user = cursor.fetchone()
+
+    if user is None:
+        left = FREE_LIMIT
+    else:
+        left = FREE_LIMIT - user[0]
 
     await message.answer(
         f"📊 Осталось бесплатных запросов: {left}"
@@ -107,21 +132,46 @@ async def invite_command(message: types.Message):
 # 🧠 AI ОТВЕТЫ
 @dp.message()
 async def handle_message(message: types.Message):
+
     user_id = message.from_user.id
 
-    # новый пользователь
-    if user_id not in user_requests:
-        user_requests[user_id] = 0
+    # 🔍 Проверяем пользователя
+    cursor.execute(
+        "SELECT requests, premium FROM users WHERE user_id=?",
+        (user_id,)
+    )
 
-    # проверка лимита
-    if user_requests[user_id] >= FREE_LIMIT:
+    user = cursor.fetchone()
+
+    # 👤 Новый пользователь
+    if user is None:
+
+        cursor.execute(
+            "INSERT INTO users (user_id, requests, premium) VALUES (?, ?, ?)",
+            (user_id, 0, 0)
+        )
+
+        conn.commit()
+
+        requests_count = 0
+        premium = 0
+
+    else:
+        requests_count = user[0]
+        premium = user[1]
+
+    # ⛔ Проверка лимита
+    if requests_count >= FREE_LIMIT and premium == 0:
+
         await message.answer(
             "⛔ Бесплатные запросы закончились\n\n"
             "💳 Купи Premium для продолжения"
         )
+
         return
 
     try:
+
         response = client.responses.create(
             model="gpt-4.1-mini",
             input=[
@@ -141,17 +191,27 @@ async def handle_message(message: types.Message):
 
         answer = response.output[0].content[0].text
 
-        # +1 запрос
-        user_requests[user_id] += 1
+        # ➕ Увеличиваем счётчик
+        cursor.execute(
+            "UPDATE users SET requests = requests + 1 WHERE user_id=?",
+            (user_id,)
+        )
+
+        conn.commit()
 
         await message.answer(answer)
 
     except Exception as e:
-        await message.answer(f"Ошибка: {e}")
+
+        await message.answer(
+            f"Ошибка: {e}"
+        )
 
 # 🚀 ЗАПУСК
 async def main():
+
     print("Бот запущен 🚀")
+
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
