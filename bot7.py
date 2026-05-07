@@ -1,4 +1,4 @@
-```python id="fullbot2026"
+```python
 import os
 import asyncio
 import sqlite3
@@ -62,6 +62,24 @@ CREATE TABLE IF NOT EXISTS invoices (
 
 conn.commit()
 
+# MENU
+menu = types.ReplyKeyboardMarkup(
+    keyboard=[
+        [
+            types.KeyboardButton(text="📚 Объяснить тему"),
+            types.KeyboardButton(text="🧮 Решить задачу")
+        ],
+        [
+            types.KeyboardButton(text="📝 Сделать конспект"),
+            types.KeyboardButton(text="📊 Осталось запросов")
+        ],
+        [
+            types.KeyboardButton(text="💳 Оплата")
+        ]
+    ],
+    resize_keyboard=True
+)
+
 # START
 @dp.message(Command("start"))
 async def start(message: types.Message):
@@ -74,8 +92,8 @@ async def start(message: types.Message):
         "🎁 Бесплатно: 7 запросов\n\n"
         "💎 Тарифы:\n"
         "• 2.5 USDT - 100 запросов / 1 месяц\n"
-        "• 6 USDT - 400 запросов / 3 месяца\n\n"
-        "💳 Для покупки используй /pay"
+        "• 6 USDT - 400 запросов / 3 месяца",
+        reply_markup=menu
     )
 
 # STATUS
@@ -112,32 +130,6 @@ async def status(message: types.Message):
         f"📅 Premium до: {user['premium_until']}"
     )
 
-# PREMIUM
-@dp.message(Command("premium"))
-async def premium(message: types.Message):
-
-    keyboard = types.InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                types.InlineKeyboardButton(
-                    text="💎 100 запросов / 1 месяц - 2.5 USDT",
-                    callback_data="buy_start"
-                )
-            ],
-            [
-                types.InlineKeyboardButton(
-                    text="🚀 400 запросов / 3 месяца - 6 USDT",
-                    callback_data="buy_pro"
-                )
-            ]
-        ]
-    )
-
-    await message.answer(
-        "👑 Выбери Premium тариф:",
-        reply_markup=keyboard
-    )
-
 # PAY
 @dp.message(Command("pay"))
 async def pay(message: types.Message):
@@ -162,6 +154,40 @@ async def pay(message: types.Message):
     await message.answer(
         "💳 Выбери тариф:",
         reply_markup=keyboard
+    )
+
+# BUTTON PAY
+@dp.message(lambda message: message.text == "💳 Оплата")
+async def pay_button(message: types.Message):
+    await pay(message)
+
+# BUTTON STATUS
+@dp.message(lambda message: message.text == "📊 Осталось запросов")
+async def status_button(message: types.Message):
+    await status(message)
+
+# BUTTON EXPLAIN
+@dp.message(lambda message: message.text == "📚 Объяснить тему")
+async def explain_button(message: types.Message):
+
+    await message.answer(
+        "📚 Напиши тему для объяснения"
+    )
+
+# BUTTON SOLVE
+@dp.message(lambda message: message.text == "🧮 Решить задачу")
+async def solve_button(message: types.Message):
+
+    await message.answer(
+        "🧮 Отправь задачу"
+    )
+
+# BUTTON SUMMARY
+@dp.message(lambda message: message.text == "📝 Сделать конспект")
+async def summary_button(message: types.Message):
+
+    await message.answer(
+        "📝 Отправь текст или тему"
     )
 
 # START PLAN
@@ -394,7 +420,7 @@ async def ai(message: types.Message):
 
             await message.answer(
                 "⛔ Лимит закончился\n\n"
-                "💳 Используй /pay"
+                "💳 Используй кнопку Оплата"
             )
 
             return
