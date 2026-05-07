@@ -163,7 +163,7 @@ async def buy_start(callback: types.CallbackQuery):
             [
                 types.InlineKeyboardButton(
                     text="💳 Оплатить",
-                    url=invoice.pay_url
+                    url=invoice.bot_invoice_url
                 )
             ]
         ]
@@ -200,7 +200,7 @@ async def buy_pro(callback: types.CallbackQuery):
             [
                 types.InlineKeyboardButton(
                     text="💳 Оплатить",
-                    url=invoice.pay_url
+                    url=invoice.bot_invoice_url
                 )
             ]
         ]
@@ -413,7 +413,7 @@ async def ai(message: types.Message):
 # 🚀 RUN
 async def main():
 
-    print("BOT STARTED 🚀")
+    print("Бот запущен 🚀")
 
     await dp.start_polling(bot)
 
