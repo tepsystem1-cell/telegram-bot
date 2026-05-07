@@ -1,6 +1,8 @@
+```python
 import os
 import asyncio
 import sqlite3
+from datetime import datetime, timedelta
 
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
@@ -8,12 +10,12 @@ from openai import OpenAI
 
 from aiocryptopay import AioCryptoPay, Networks
 
-# 🔑 Railway Variables
+# 🔑 TOKENS
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 CRYPTO_PAY_TOKEN = os.getenv("CRYPTO_PAY_TOKEN")
 
-# 🚀 Инициализация
+# 🚀 BOT
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
@@ -26,10 +28,10 @@ crypto = AioCryptoPay(
     network=Networks.MAIN_NET
 )
 
-# 🎁 Бесплатный лимит
+# 🎁 FREE LIMIT
 FREE_LIMIT = 7
 
-# 🗄️ SQLite база
+# 🗄️ DATABASE
 conn = sqlite3.connect(
     "users.db",
     check_same_thread=False
@@ -39,12 +41,25 @@ conn.row_factory = sqlite3.Row
 
 cursor = conn.cursor()
 
-# 👥 Таблица пользователей
+# 👥 USERS TABLE
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS users (
     user_id INTEGER PRIMARY KEY,
-    requests INTEGER DEFAULT 0,
-    premium INTEGER DEFAULT 0
+    free_requests INTEGER DEFAULT 0,
+    paid_requests INTEGER DEFAULT 0,
+    premium_until TEXT DEFAULT '',
+    tariff TEXT DEFAULT 'FREE'
+)
+""")
+
+conn.commit()
+
+# 💳 PAYMENTS TABLE
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS invoices (
+    invoice_id INTEGER,
+    user_id INTEGER,
+    tariff TEXT
 )
 """)
 
@@ -55,178 +70,321 @@ conn.commit()
 async def start(message: types.Message):
 
     await message.answer(
-        "🎓 Привет! Я Reshala Study Bot\n\n"
+        "🎓 Reshala Study Bot\n\n"
         "📚 Объясняю темы\n"
         "🧮 Решаю задачи\n"
         "📝 Делаю конспекты\n\n"
-        f"🎁 Бесплатно доступно {FREE_LIMIT} запросов\n\n"
-        "👇 Нажми Menu возле строки ввода",
-        reply_markup=types.ReplyKeyboardRemove()
+        "🎁 Бесплатно: 7 запросов\n\n"
+        "💎 Premium тарифы:\n"
+        "• 199₽ → 100 запросов / 1 месяц\n"
+        "• 499₽ → 400 запросов / 3 месяца"
     )
 
-# ℹ️ HELP
-@dp.message(Command("help"))
-async def help_command(message: types.Message):
+# 📊 STATUS
+@dp.message(Command("status"))
+async def status(message: types.Message):
 
-    await message.answer(
-        "ℹ️ Команды бота:\n\n"
-        "/explain — объяснить тему\n"
-        "/solve — решить задачу\n"
-        "/summary — сделать конспект\n"
-        "/limit — остаток запросов\n"
-        "/premium — Premium доступ\n"
-        "/pay — купить Premium"
+    user_id = message.from_user.id
+
+    cursor.execute(
+        "SELECT * FROM users WHERE user_id=?",
+        (user_id,)
     )
 
-# 👑 PREMIUM
-@dp.message(Command("premium"))
-async def premium_command(message: types.Message):
+    user = cursor.fetchone()
+
+    if user is None:
+
+        await message.answer(
+            "🎁 Бесплатный аккаунт\n"
+            f"Осталось запросов: {FREE_LIMIT}"
+        )
+
+        return
+
+    free_left = FREE_LIMIT - user["free_requests"]
+
+    if free_left < 0:
+        free_left = 0
 
     await message.answer(
-        "👑 Premium доступ\n\n"
-        "✅ Безлимитные запросы\n"
-        "✅ Быстрые ответы\n"
-        "✅ Доступ 30 дней\n\n"
-        "💰 Цена: 3 USDT"
+        f"👤 Тариф: {user['tariff']}\n\n"
+        f"🎁 Бесплатных осталось: {free_left}\n"
+        f"💎 Premium запросов: {user['paid_requests']}\n"
+        f"📅 Premium до: {user['premium_until']}"
     )
 
 # 💳 PAY
 @dp.message(Command("pay"))
-async def pay_command(message: types.Message):
-
-    invoice = await crypto.create_invoice(
-        asset="USDT",
-        amount=3,
-        description="Premium доступ Reshala Study Bot"
-    )
+async def pay(message: types.Message):
 
     keyboard = types.InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 types.InlineKeyboardButton(
-                    text="💳 Оплатить Premium",
-                    url=invoice.pay_url
+                    text="💎 100 запросов / 1 месяц — 199₽",
+                    callback_data="buy_start"
+                )
+            ],
+            [
+                types.InlineKeyboardButton(
+                    text="🚀 400 запросов / 3 месяца — 499₽",
+                    callback_data="buy_pro"
                 )
             ]
         ]
     )
 
     await message.answer(
-        "👑 Premium доступ\n\n"
-        "Нажми кнопку ниже для оплаты:",
+        "💳 Выбери тариф:",
         reply_markup=keyboard
     )
 
-# 📊 LIMIT
-@dp.message(Command("limit"))
-async def limit_command(message: types.Message):
+# 💎 START TARIFF
+@dp.callback_query(lambda c: c.data == "buy_start")
+async def buy_start(callback: types.CallbackQuery):
+
+    invoice = await crypto.create_invoice(
+        asset="USDT",
+        amount=2,
+        description="START тариф"
+    )
+
+    cursor.execute(
+        "INSERT INTO invoices VALUES (?, ?, ?)",
+        (
+            invoice.invoice_id,
+            callback.from_user.id,
+            "START"
+        )
+    )
+
+    conn.commit()
+
+    keyboard = types.InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                types.InlineKeyboardButton(
+                    text="💳 Оплатить",
+                    url=invoice.pay_url
+                )
+            ]
+        ]
+    )
+
+    await callback.message.answer(
+        "💎 Оплати тариф START",
+        reply_markup=keyboard
+    )
+
+# 🚀 PRO TARIFF
+@dp.callback_query(lambda c: c.data == "buy_pro")
+async def buy_pro(callback: types.CallbackQuery):
+
+    invoice = await crypto.create_invoice(
+        asset="USDT",
+        amount=5,
+        description="PRO тариф"
+    )
+
+    cursor.execute(
+        "INSERT INTO invoices VALUES (?, ?, ?)",
+        (
+            invoice.invoice_id,
+            callback.from_user.id,
+            "PRO"
+        )
+    )
+
+    conn.commit()
+
+    keyboard = types.InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                types.InlineKeyboardButton(
+                    text="💳 Оплатить",
+                    url=invoice.pay_url
+                )
+            ]
+        ]
+    )
+
+    await callback.message.answer(
+        "🚀 Оплати тариф PRO",
+        reply_markup=keyboard
+    )
+
+# ✅ CHECK PAYMENT
+@dp.message(Command("check"))
+async def check_payment(message: types.Message):
 
     user_id = message.from_user.id
 
-    cursor.execute(
-        "SELECT requests FROM users WHERE user_id=?",
-        (user_id,)
+    invoices = await crypto.get_invoices(
+        status="paid"
     )
 
-    user = cursor.fetchone()
-
-    if user is None:
+    for invoice in invoices.items:
 
         cursor.execute(
-            "INSERT INTO users (user_id, requests, premium) VALUES (?, ?, ?)",
-            (user_id, 0, 0)
+            "SELECT * FROM invoices WHERE invoice_id=?",
+            (invoice.invoice_id,)
         )
 
-        conn.commit()
+        db_invoice = cursor.fetchone()
 
-        requests_count = 0
+        if db_invoice is None:
+            continue
 
-    else:
-        requests_count = user["requests"]
+        if db_invoice["user_id"] != user_id:
+            continue
 
-    left = FREE_LIMIT - requests_count
+        tariff = db_invoice["tariff"]
 
-    if left < 0:
-        left = 0
+        # 💎 START
+        if tariff == "START":
 
-    await message.answer(
-        f"📊 Осталось запросов: {left}"
-    )
+            premium_until = (
+                datetime.now() + timedelta(days=30)
+            ).strftime("%Y-%m-%d")
 
-# 📚 EXPLAIN
-@dp.message(Command("explain"))
-async def explain_command(message: types.Message):
+            cursor.execute("""
+            UPDATE users
+            SET
+                paid_requests = paid_requests + 100,
+                premium_until = ?,
+                tariff = 'START'
+            WHERE user_id = ?
+            """, (
+                premium_until,
+                user_id
+            ))
 
-    await message.answer(
-        "📚 Напиши тему, которую нужно объяснить 👇"
-    )
+        # 🚀 PRO
+        elif tariff == "PRO":
 
-# 🧮 SOLVE
-@dp.message(Command("solve"))
-async def solve_command(message: types.Message):
+            premium_until = (
+                datetime.now() + timedelta(days=90)
+            ).strftime("%Y-%m-%d")
 
-    await message.answer(
-        "🧮 Отправь задачу 👇"
-    )
-
-# 📝 SUMMARY
-@dp.message(Command("summary"))
-async def summary_command(message: types.Message):
-
-    await message.answer(
-        "📝 Отправь текст или тему 👇"
-    )
-
-# 👥 INVITE
-@dp.message(Command("invite"))
-async def invite_command(message: types.Message):
-
-    await message.answer(
-        "👥 Пригласи друга 🚀\n\n"
-        "https://t.me/Reshala_study_bot"
-    )
-
-# 🧠 AI ОТВЕТЫ
-@dp.message(lambda message: message.text and not message.text.startswith("/"))
-async def handle_message(message: types.Message):
-
-    user_id = message.from_user.id
-
-    # 🔍 Проверяем пользователя
-    cursor.execute(
-        "SELECT requests, premium FROM users WHERE user_id=?",
-        (user_id,)
-    )
-
-    user = cursor.fetchone()
-
-    # 👤 Новый пользователь
-    if user is None:
-
-        cursor.execute(
-            "INSERT INTO users (user_id, requests, premium) VALUES (?, ?, ?)",
-            (user_id, 0, 0)
-        )
+            cursor.execute("""
+            UPDATE users
+            SET
+                paid_requests = paid_requests + 400,
+                premium_until = ?,
+                tariff = 'PRO'
+            WHERE user_id = ?
+            """, (
+                premium_until,
+                user_id
+            ))
 
         conn.commit()
-
-        requests_count = 0
-        premium = 0
-
-    else:
-        requests_count = user["requests"]
-        premium = user["premium"]
-
-    # ⛔ Проверка лимита
-    if requests_count >= FREE_LIMIT and premium == 0:
 
         await message.answer(
-            "⛔ Бесплатные запросы закончились\n\n"
-            "💳 Используй /pay для покупки Premium"
+            "✅ Оплата найдена!\n\n"
+            "Premium активирован 🚀"
         )
 
         return
 
+    await message.answer(
+        "❌ Оплата пока не найдена"
+    )
+
+# 🧠 AI
+@dp.message(lambda message: message.text and not message.text.startswith("/"))
+async def ai(message: types.Message):
+
+    user_id = message.from_user.id
+
+    # 👤 USER
+    cursor.execute(
+        "SELECT * FROM users WHERE user_id=?",
+        (user_id,)
+    )
+
+    user = cursor.fetchone()
+
+    # 🆕 NEW USER
+    if user is None:
+
+        cursor.execute("""
+        INSERT INTO users (
+            user_id,
+            free_requests,
+            paid_requests,
+            premium_until,
+            tariff
+        )
+        VALUES (?, ?, ?, ?, ?)
+        """, (
+            user_id,
+            0,
+            0,
+            "",
+            "FREE"
+        ))
+
+        conn.commit()
+
+        cursor.execute(
+            "SELECT * FROM users WHERE user_id=?",
+            (user_id,)
+        )
+
+        user = cursor.fetchone()
+
+    # 📅 CHECK PREMIUM DATE
+    premium_active = False
+
+    if user["premium_until"]:
+
+        try:
+
+            premium_date = datetime.strptime(
+                user["premium_until"],
+                "%Y-%m-%d"
+            )
+
+            if premium_date > datetime.now():
+                premium_active = True
+
+        except:
+            pass
+
+    # 💎 PREMIUM REQUESTS
+    if premium_active and user["paid_requests"] > 0:
+
+        cursor.execute("""
+        UPDATE users
+        SET paid_requests = paid_requests - 1
+        WHERE user_id=?
+        """, (user_id,))
+
+        conn.commit()
+
+    else:
+
+        # 🎁 FREE LIMIT
+        if user["free_requests"] >= FREE_LIMIT:
+
+            await message.answer(
+                "⛔ Лимит закончился\n\n"
+                "Используй /pay"
+            )
+
+            return
+
+        cursor.execute("""
+        UPDATE users
+        SET free_requests = free_requests + 1
+        WHERE user_id=?
+        """, (user_id,))
+
+        conn.commit()
+
+    # 🤖 OPENAI
     try:
 
         response = client.responses.create(
@@ -235,8 +393,8 @@ async def handle_message(message: types.Message):
                 {
                     "role": "system",
                     "content": (
-                        "Ты умный помощник для студентов. "
-                        "Объясняй простыми словами."
+                        "Ты AI помощник для студентов. "
+                        "Объясняй просто."
                     )
                 },
                 {
@@ -248,14 +406,6 @@ async def handle_message(message: types.Message):
 
         answer = response.output[0].content[0].text
 
-        # ➕ Увеличиваем запросы
-        cursor.execute(
-            "UPDATE users SET requests = requests + 1 WHERE user_id=?",
-            (user_id,)
-        )
-
-        conn.commit()
-
         await message.answer(answer)
 
     except Exception as e:
@@ -264,12 +414,13 @@ async def handle_message(message: types.Message):
             f"Ошибка: {e}"
         )
 
-# 🚀 ЗАПУСК
+# 🚀 RUN
 async def main():
 
-    print("Бот запущен 🚀")
+    print("BOT STARTED 🚀")
 
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
     asyncio.run(main())
+```
