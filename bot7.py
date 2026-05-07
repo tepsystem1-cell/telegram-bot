@@ -1,4 +1,3 @@
-```python
 import os
 import asyncio
 import sqlite3
@@ -7,7 +6,6 @@ from datetime import datetime, timedelta
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from openai import OpenAI
-
 from aiocryptopay import AioCryptoPay, Networks
 
 # TOKENS
@@ -19,9 +17,7 @@ CRYPTO_PAY_TOKEN = os.getenv("CRYPTO_PAY_TOKEN")
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
-client = OpenAI(
-    api_key=OPENAI_API_KEY
-)
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 crypto = AioCryptoPay(
     token=CRYPTO_PAY_TOKEN,
@@ -476,4 +472,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-```
