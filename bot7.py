@@ -1,3 +1,22 @@
+Похоже, у тебя была включена английская раскладка.
+Ты написал:
+
+```text id="s1"
+ghbikb yjdsq rjl wtkbrjv
+```
+
+Это читается как:
+
+```text id="s2"
+пришли новый код целиком
+```
+
+Вот полный обновлённый код с тарифами:
+
+* 2.5 USDT → 100 запросов / 1 месяц
+* 6 USDT → 400 запросов / 3 месяца
+
+```python id="s3"
 import os
 import asyncio
 import sqlite3
@@ -72,8 +91,8 @@ async def start(message: types.Message):
         "📝 Делаю конспекты\n\n"
         "🎁 Бесплатно: 7 запросов\n\n"
         "💎 Тарифы:\n"
-        "• 199₽ → 100 запросов / 1 месяц\n"
-        "• 499₽ → 400 запросов / 3 месяца\n\n"
+        "• 2.5 USDT → 100 запросов / 1 месяц\n"
+        "• 6 USDT → 400 запросов / 3 месяца\n\n"
         "💳 Для покупки используй /pay"
     )
 
@@ -119,13 +138,13 @@ async def pay(message: types.Message):
         inline_keyboard=[
             [
                 types.InlineKeyboardButton(
-                    text="💎 100 запросов / 1 месяц — 199₽",
+                    text="💎 100 запросов / 1 месяц — 2.5 USDT",
                     callback_data="buy_start"
                 )
             ],
             [
                 types.InlineKeyboardButton(
-                    text="🚀 400 запросов / 3 месяца — 499₽",
+                    text="🚀 400 запросов / 3 месяца — 6 USDT",
                     callback_data="buy_pro"
                 )
             ]
@@ -143,7 +162,7 @@ async def buy_start(callback: types.CallbackQuery):
 
     invoice = await crypto.create_invoice(
         asset="USDT",
-        amount=2,
+        amount=2.5,
         description="START PLAN"
     )
 
@@ -180,7 +199,7 @@ async def buy_pro(callback: types.CallbackQuery):
 
     invoice = await crypto.create_invoice(
         asset="USDT",
-        amount=5,
+        amount=6,
         description="PRO PLAN"
     )
 
@@ -419,3 +438,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+```
