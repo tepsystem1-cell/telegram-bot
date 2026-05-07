@@ -1,4 +1,3 @@
-```python
 import os
 import asyncio
 import sqlite3
@@ -15,7 +14,7 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 CRYPTO_PAY_TOKEN = os.getenv("CRYPTO_PAY_TOKEN")
 
-# 🚀 BOT
+# 🤖 BOT
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
@@ -31,17 +30,16 @@ crypto = AioCryptoPay(
 # 🎁 FREE LIMIT
 FREE_LIMIT = 7
 
-# 🗄️ DATABASE
+# 🗄 DATABASE
 conn = sqlite3.connect(
     "users.db",
     check_same_thread=False
 )
 
 conn.row_factory = sqlite3.Row
-
 cursor = conn.cursor()
 
-# 👥 USERS TABLE
+# 👤 USERS
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS users (
     user_id INTEGER PRIMARY KEY,
@@ -52,9 +50,7 @@ CREATE TABLE IF NOT EXISTS users (
 )
 """)
 
-conn.commit()
-
-# 💳 PAYMENTS TABLE
+# 💳 INVOICES
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS invoices (
     invoice_id INTEGER,
@@ -75,9 +71,10 @@ async def start(message: types.Message):
         "🧮 Решаю задачи\n"
         "📝 Делаю конспекты\n\n"
         "🎁 Бесплатно: 7 запросов\n\n"
-        "💎 Premium тарифы:\n"
+        "💎 Тарифы:\n"
         "• 199₽ → 100 запросов / 1 месяц\n"
-        "• 499₽ → 400 запросов / 3 месяца"
+        "• 499₽ → 400 запросов / 3 месяца\n\n"
+        "💳 Для покупки используй /pay"
     )
 
 # 📊 STATUS
@@ -109,7 +106,7 @@ async def status(message: types.Message):
 
     await message.answer(
         f"👤 Тариф: {user['tariff']}\n\n"
-        f"🎁 Бесплатных осталось: {free_left}\n"
+        f"🎁 Бесплатных запросов: {free_left}\n"
         f"💎 Premium запросов: {user['paid_requests']}\n"
         f"📅 Premium до: {user['premium_until']}"
     )
@@ -140,14 +137,14 @@ async def pay(message: types.Message):
         reply_markup=keyboard
     )
 
-# 💎 START TARIFF
+# 💎 START PLAN
 @dp.callback_query(lambda c: c.data == "buy_start")
 async def buy_start(callback: types.CallbackQuery):
 
     invoice = await crypto.create_invoice(
         asset="USDT",
         amount=2,
-        description="START тариф"
+        description="START PLAN"
     )
 
     cursor.execute(
@@ -173,18 +170,18 @@ async def buy_start(callback: types.CallbackQuery):
     )
 
     await callback.message.answer(
-        "💎 Оплати тариф START",
+        "💎 Нажми кнопку для оплаты START тарифа",
         reply_markup=keyboard
     )
 
-# 🚀 PRO TARIFF
+# 🚀 PRO PLAN
 @dp.callback_query(lambda c: c.data == "buy_pro")
 async def buy_pro(callback: types.CallbackQuery):
 
     invoice = await crypto.create_invoice(
         asset="USDT",
         amount=5,
-        description="PRO тариф"
+        description="PRO PLAN"
     )
 
     cursor.execute(
@@ -210,13 +207,13 @@ async def buy_pro(callback: types.CallbackQuery):
     )
 
     await callback.message.answer(
-        "🚀 Оплати тариф PRO",
+        "🚀 Нажми кнопку для оплаты PRO тарифа",
         reply_markup=keyboard
     )
 
 # ✅ CHECK PAYMENT
 @dp.message(Command("check"))
-async def check_payment(message: types.Message):
+async def check(message: types.Message):
 
     user_id = message.from_user.id
 
@@ -292,13 +289,12 @@ async def check_payment(message: types.Message):
         "❌ Оплата пока не найдена"
     )
 
-# 🧠 AI
+# 🤖 AI
 @dp.message(lambda message: message.text and not message.text.startswith("/"))
 async def ai(message: types.Message):
 
     user_id = message.from_user.id
 
-    # 👤 USER
     cursor.execute(
         "SELECT * FROM users WHERE user_id=?",
         (user_id,)
@@ -306,7 +302,7 @@ async def ai(message: types.Message):
 
     user = cursor.fetchone()
 
-    # 🆕 NEW USER
+    # 👤 NEW USER
     if user is None:
 
         cursor.execute("""
@@ -335,7 +331,7 @@ async def ai(message: types.Message):
 
         user = cursor.fetchone()
 
-    # 📅 CHECK PREMIUM DATE
+    # 📅 PREMIUM CHECK
     premium_active = False
 
     if user["premium_until"]:
@@ -371,7 +367,7 @@ async def ai(message: types.Message):
 
             await message.answer(
                 "⛔ Лимит закончился\n\n"
-                "Используй /pay"
+                "💳 Используй /pay"
             )
 
             return
@@ -384,7 +380,7 @@ async def ai(message: types.Message):
 
         conn.commit()
 
-    # 🤖 OPENAI
+    # 🧠 OPENAI
     try:
 
         response = client.responses.create(
@@ -394,7 +390,7 @@ async def ai(message: types.Message):
                     "role": "system",
                     "content": (
                         "Ты AI помощник для студентов. "
-                        "Объясняй просто."
+                        "Объясняй простыми словами."
                     )
                 },
                 {
@@ -423,4 +419,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-```
