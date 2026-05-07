@@ -6,14 +6,25 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from openai import OpenAI
 
+from aiocryptopay import AioCryptoPay, Networks
+
 # 🔑 Railway Variables
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+CRYPTO_PAY_TOKEN = os.getenv("CRYPTO_PAY_TOKEN")
 
 # 🚀 Инициализация
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
-client = OpenAI(api_key=OPENAI_API_KEY)
+
+client = OpenAI(
+    api_key=OPENAI_API_KEY
+)
+
+crypto = AioCryptoPay(
+    token=CRYPTO_PAY_TOKEN,
+    network=Networks.MAIN_NET
+)
 
 # 🎁 Бесплатный лимит
 FREE_LIMIT = 7
@@ -63,7 +74,8 @@ async def help_command(message: types.Message):
         "/solve — решить задачу\n"
         "/summary — сделать конспект\n"
         "/limit — остаток запросов\n"
-        "/premium — Premium доступ"
+        "/premium — Premium доступ\n"
+        "/pay — купить Premium"
     )
 
 # 👑 PREMIUM
@@ -75,18 +87,34 @@ async def premium_command(message: types.Message):
         "✅ Безлимитные запросы\n"
         "✅ Быстрые ответы\n"
         "✅ Доступ 30 дней\n\n"
-        "💰 Цена: 199₽"
+        "💰 Цена: 3 USDT"
     )
 
 # 💳 PAY
 @dp.message(Command("pay"))
 async def pay_command(message: types.Message):
 
+    invoice = await crypto.create_invoice(
+        asset="USDT",
+        amount=3,
+        description="Premium доступ Reshala Study Bot"
+    )
+
+    keyboard = types.InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                types.InlineKeyboardButton(
+                    text="💳 Оплатить Premium",
+                    url=invoice.pay_url
+                )
+            ]
+        ]
+    )
+
     await message.answer(
-        "💳 Оплата Premium\n\n"
-        "Переведи 199₽ на карту:\n"
-        "XXXX XXXX XXXX XXXX\n\n"
-        "После оплаты отправь чек."
+        "👑 Premium доступ\n\n"
+        "Нажми кнопку ниже для оплаты:",
+        reply_markup=keyboard
     )
 
 # 📊 LIMIT
@@ -122,7 +150,7 @@ async def limit_command(message: types.Message):
         left = 0
 
     await message.answer(
-        f"📊 Осталось бесплатных запросов: {left}"
+        f"📊 Осталось запросов: {left}"
     )
 
 # 📚 EXPLAIN
@@ -194,7 +222,7 @@ async def handle_message(message: types.Message):
 
         await message.answer(
             "⛔ Бесплатные запросы закончились\n\n"
-            "💳 Купи Premium для продолжения"
+            "💳 Используй /pay для покупки Premium"
         )
 
         return
@@ -220,7 +248,7 @@ async def handle_message(message: types.Message):
 
         answer = response.output[0].content[0].text
 
-        # ➕ Обновляем счётчик
+        # ➕ Увеличиваем запросы
         cursor.execute(
             "UPDATE users SET requests = requests + 1 WHERE user_id=?",
             (user_id,)
