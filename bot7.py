@@ -1,3 +1,4 @@
+```python id="fullbot2026"
 import os
 import asyncio
 import sqlite3
@@ -66,15 +67,15 @@ conn.commit()
 async def start(message: types.Message):
 
     await message.answer(
-        "Reshala Study Bot\n\n"
-        "Объясняю темы\n"
-        "Решаю задачи\n"
-        "Делаю конспекты\n\n"
-        "Бесплатно: 7 запросов\n\n"
-        "Тарифы:\n"
-        "2.5 USDT - 100 запросов / 1 месяц\n"
-        "6 USDT - 400 запросов / 3 месяца\n\n"
-        "Для покупки используй /pay"
+        "🚀 Reshala Study Bot\n\n"
+        "📚 Объясняю темы\n"
+        "🧮 Решаю задачи\n"
+        "📝 Делаю конспекты\n\n"
+        "🎁 Бесплатно: 7 запросов\n\n"
+        "💎 Тарифы:\n"
+        "• 2.5 USDT - 100 запросов / 1 месяц\n"
+        "• 6 USDT - 400 запросов / 3 месяца\n\n"
+        "💳 Для покупки используй /pay"
     )
 
 # STATUS
@@ -93,7 +94,7 @@ async def status(message: types.Message):
     if user is None:
 
         await message.answer(
-            f"Бесплатный аккаунт\n"
+            f"🎁 Бесплатный аккаунт\n"
             f"Осталось запросов: {FREE_LIMIT}"
         )
 
@@ -105,10 +106,36 @@ async def status(message: types.Message):
         free_left = 0
 
     await message.answer(
-        f"Тариф: {user['tariff']}\n\n"
-        f"Бесплатных запросов: {free_left}\n"
-        f"Premium запросов: {user['paid_requests']}\n"
-        f"Premium до: {user['premium_until']}"
+        f"👤 Тариф: {user['tariff']}\n\n"
+        f"🎁 Бесплатных запросов: {free_left}\n"
+        f"💎 Premium запросов: {user['paid_requests']}\n"
+        f"📅 Premium до: {user['premium_until']}"
+    )
+
+# PREMIUM
+@dp.message(Command("premium"))
+async def premium(message: types.Message):
+
+    keyboard = types.InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                types.InlineKeyboardButton(
+                    text="💎 100 запросов / 1 месяц - 2.5 USDT",
+                    callback_data="buy_start"
+                )
+            ],
+            [
+                types.InlineKeyboardButton(
+                    text="🚀 400 запросов / 3 месяца - 6 USDT",
+                    callback_data="buy_pro"
+                )
+            ]
+        ]
+    )
+
+    await message.answer(
+        "👑 Выбери Premium тариф:",
+        reply_markup=keyboard
     )
 
 # PAY
@@ -119,13 +146,13 @@ async def pay(message: types.Message):
         inline_keyboard=[
             [
                 types.InlineKeyboardButton(
-                    text="100 запросов / 1 месяц - 2.5 USDT",
+                    text="💎 100 запросов / 1 месяц - 2.5 USDT",
                     callback_data="buy_start"
                 )
             ],
             [
                 types.InlineKeyboardButton(
-                    text="400 запросов / 3 месяца - 6 USDT",
+                    text="🚀 400 запросов / 3 месяца - 6 USDT",
                     callback_data="buy_pro"
                 )
             ]
@@ -133,7 +160,7 @@ async def pay(message: types.Message):
     )
 
     await message.answer(
-        "Выбери тариф:",
+        "💳 Выбери тариф:",
         reply_markup=keyboard
     )
 
@@ -162,7 +189,7 @@ async def buy_start(callback: types.CallbackQuery):
         inline_keyboard=[
             [
                 types.InlineKeyboardButton(
-                    text="Оплатить",
+                    text="💳 Оплатить",
                     url=invoice.bot_invoice_url
                 )
             ]
@@ -170,7 +197,7 @@ async def buy_start(callback: types.CallbackQuery):
     )
 
     await callback.message.answer(
-        "Нажми кнопку для оплаты START тарифа",
+        "💎 Нажми кнопку для оплаты START тарифа",
         reply_markup=keyboard
     )
 
@@ -199,7 +226,7 @@ async def buy_pro(callback: types.CallbackQuery):
         inline_keyboard=[
             [
                 types.InlineKeyboardButton(
-                    text="Оплатить",
+                    text="💳 Оплатить",
                     url=invoice.bot_invoice_url
                 )
             ]
@@ -207,7 +234,7 @@ async def buy_pro(callback: types.CallbackQuery):
     )
 
     await callback.message.answer(
-        "Нажми кнопку для оплаты PRO тарифа",
+        "🚀 Нажми кнопку для оплаты PRO тарифа",
         reply_markup=keyboard
     )
 
@@ -279,14 +306,14 @@ async def check(message: types.Message):
         conn.commit()
 
         await message.answer(
-            "Оплата найдена!\n\n"
-            "Premium активирован"
+            "✅ Оплата найдена!\n\n"
+            "🚀 Premium активирован"
         )
 
         return
 
     await message.answer(
-        "Оплата пока не найдена"
+        "❌ Оплата пока не найдена"
     )
 
 # AI
@@ -366,8 +393,8 @@ async def ai(message: types.Message):
         if user["free_requests"] >= FREE_LIMIT:
 
             await message.answer(
-                "Лимит закончился\n\n"
-                "Используй /pay"
+                "⛔ Лимит закончился\n\n"
+                "💳 Используй /pay"
             )
 
             return
@@ -413,9 +440,10 @@ async def ai(message: types.Message):
 # RUN
 async def main():
 
-    print("Бот запущен")
+    print("Бот запущен 🚀")
 
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
     asyncio.run(main())
+```
