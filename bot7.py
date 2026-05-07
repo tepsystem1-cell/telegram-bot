@@ -89,7 +89,6 @@ async def limit_command(message: types.Message):
 
     user_id = message.from_user.id
 
-    # ищем пользователя
     cursor.execute(
         "SELECT requests FROM users WHERE user_id=?",
         (user_id,)
@@ -97,7 +96,6 @@ async def limit_command(message: types.Message):
 
     user = cursor.fetchone()
 
-    # если пользователя нет
     if user is None:
 
         cursor.execute(
@@ -155,7 +153,7 @@ async def invite_command(message: types.Message):
     )
 
 # 🧠 AI ОТВЕТЫ
-@dp.message()
+@dp.message(lambda message: not message.text.startswith("/"))
 async def handle_message(message: types.Message):
 
     user_id = message.from_user.id
