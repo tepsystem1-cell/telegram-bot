@@ -36,6 +36,7 @@ conn.commit()
 # 🚀 START
 @dp.message(Command("start"))
 async def start(message: types.Message):
+
     await message.answer(
         "🎓 Привет! Я Reshala Study Bot\n\n"
         "📚 Объясняю темы\n"
@@ -49,17 +50,20 @@ async def start(message: types.Message):
 # ℹ️ HELP
 @dp.message(Command("help"))
 async def help_command(message: types.Message):
+
     await message.answer(
-        "ℹ️ Просто выбери действие через Menu\n\n"
-        "Например:\n"
-        "• Объяснить тему\n"
-        "• Решить задачу\n"
-        "• Сделать конспект"
+        "ℹ️ Команды бота:\n\n"
+        "/explain — объяснить тему\n"
+        "/solve — решить задачу\n"
+        "/summary — сделать конспект\n"
+        "/limit — остаток запросов\n"
+        "/premium — Premium доступ"
     )
 
 # 👑 PREMIUM
 @dp.message(Command("premium"))
 async def premium_command(message: types.Message):
+
     await message.answer(
         "👑 Premium доступ\n\n"
         "✅ Безлимитные запросы\n"
@@ -71,6 +75,7 @@ async def premium_command(message: types.Message):
 # 💳 PAY
 @dp.message(Command("pay"))
 async def pay_command(message: types.Message):
+
     await message.answer(
         "💳 Оплата Premium\n\n"
         "Переведи 199₽ на карту:\n"
@@ -84,6 +89,7 @@ async def limit_command(message: types.Message):
 
     user_id = message.from_user.id
 
+    # ищем пользователя
     cursor.execute(
         "SELECT requests FROM users WHERE user_id=?",
         (user_id,)
@@ -91,10 +97,25 @@ async def limit_command(message: types.Message):
 
     user = cursor.fetchone()
 
+    # если пользователя нет
     if user is None:
-        left = FREE_LIMIT
+
+        cursor.execute(
+            "INSERT INTO users (user_id, requests, premium) VALUES (?, ?, ?)",
+            (user_id, 0, 0)
+        )
+
+        conn.commit()
+
+        requests_count = 0
+
     else:
-        left = FREE_LIMIT - user[0]
+        requests_count = user[0]
+
+    left = FREE_LIMIT - requests_count
+
+    if left < 0:
+        left = 0
 
     await message.answer(
         f"📊 Осталось бесплатных запросов: {left}"
@@ -103,6 +124,7 @@ async def limit_command(message: types.Message):
 # 📚 EXPLAIN
 @dp.message(Command("explain"))
 async def explain_command(message: types.Message):
+
     await message.answer(
         "📚 Напиши тему, которую нужно объяснить 👇"
     )
@@ -110,6 +132,7 @@ async def explain_command(message: types.Message):
 # 🧮 SOLVE
 @dp.message(Command("solve"))
 async def solve_command(message: types.Message):
+
     await message.answer(
         "🧮 Отправь задачу 👇"
     )
@@ -117,6 +140,7 @@ async def solve_command(message: types.Message):
 # 📝 SUMMARY
 @dp.message(Command("summary"))
 async def summary_command(message: types.Message):
+
     await message.answer(
         "📝 Отправь текст или тему 👇"
     )
@@ -124,6 +148,7 @@ async def summary_command(message: types.Message):
 # 👥 INVITE
 @dp.message(Command("invite"))
 async def invite_command(message: types.Message):
+
     await message.answer(
         "👥 Пригласи друга 🚀\n\n"
         "https://t.me/Reshala_study_bot"
@@ -135,7 +160,7 @@ async def handle_message(message: types.Message):
 
     user_id = message.from_user.id
 
-    # 🔍 Проверяем пользователя
+    # 🔍 Ищем пользователя
     cursor.execute(
         "SELECT requests, premium FROM users WHERE user_id=?",
         (user_id,)
@@ -191,7 +216,7 @@ async def handle_message(message: types.Message):
 
         answer = response.output[0].content[0].text
 
-        # ➕ Увеличиваем счётчик
+        # ➕ Увеличиваем запросы
         cursor.execute(
             "UPDATE users SET requests = requests + 1 WHERE user_id=?",
             (user_id,)
