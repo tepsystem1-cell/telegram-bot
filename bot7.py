@@ -17,7 +17,9 @@ CRYPTO_PAY_TOKEN = os.getenv("CRYPTO_PAY_TOKEN")
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
-client = OpenAI(api_key=OPENAI_API_KEY)
+client = OpenAI(
+    api_key=OPENAI_API_KEY
+)
 
 crypto = AioCryptoPay(
     token=CRYPTO_PAY_TOKEN,
@@ -270,77 +272,101 @@ async def check(message: types.Message):
 
     user_id = message.from_user.id
 
-    invoices = await crypto.get_invoices(
-        status="paid"
-    )
+    try:
 
-    for invoice in invoices.items:
-
-        cursor.execute(
-            "SELECT * FROM invoices WHERE invoice_id=?",
-            (invoice.invoice_id,)
+        invoices = await crypto.get_invoices(
+            status="paid"
         )
 
-        db_invoice = cursor.fetchone()
+        if not invoices:
 
-        if db_invoice is None:
-            continue
+            await message.answer(
+                "❌ Оплат пока нет"
+            )
 
-        if db_invoice["user_id"] != user_id:
-            continue
+            return
 
-        tariff = db_invoice["tariff"]
+        if not invoices.items:
 
-        # START
-        if tariff == "START":
+            await message.answer(
+                "❌ Оплат пока нет"
+            )
 
-            premium_until = (
-                datetime.now() + timedelta(days=30)
-            ).strftime("%Y-%m-%d")
+            return
 
-            cursor.execute("""
-            UPDATE users
-            SET
-                paid_requests = paid_requests + 100,
-                premium_until = ?,
-                tariff = 'START'
-            WHERE user_id = ?
-            """, (
-                premium_until,
-                user_id
-            ))
+        for invoice in invoices.items:
 
-        # PRO
-        elif tariff == "PRO":
+            cursor.execute(
+                "SELECT * FROM invoices WHERE invoice_id=?",
+                (invoice.invoice_id,)
+            )
 
-            premium_until = (
-                datetime.now() + timedelta(days=90)
-            ).strftime("%Y-%m-%d")
+            db_invoice = cursor.fetchone()
 
-            cursor.execute("""
-            UPDATE users
-            SET
-                paid_requests = paid_requests + 400,
-                premium_until = ?,
-                tariff = 'PRO'
-            WHERE user_id = ?
-            """, (
-                premium_until,
-                user_id
-            ))
+            if db_invoice is None:
+                continue
 
-        conn.commit()
+            if db_invoice["user_id"] != user_id:
+                continue
+
+            tariff = db_invoice["tariff"]
+
+            # START
+            if tariff == "START":
+
+                premium_until = (
+                    datetime.now() + timedelta(days=30)
+                ).strftime("%Y-%m-%d")
+
+                cursor.execute("""
+                UPDATE users
+                SET
+                    paid_requests = paid_requests + 100,
+                    premium_until = ?,
+                    tariff = 'START'
+                WHERE user_id = ?
+                """, (
+                    premium_until,
+                    user_id
+                ))
+
+            # PRO
+            elif tariff == "PRO":
+
+                premium_until = (
+                    datetime.now() + timedelta(days=90)
+                ).strftime("%Y-%m-%d")
+
+                cursor.execute("""
+                UPDATE users
+                SET
+                    paid_requests = paid_requests + 400,
+                    premium_until = ?,
+                    tariff = 'PRO'
+                WHERE user_id = ?
+                """, (
+                    premium_until,
+                    user_id
+                ))
+
+            conn.commit()
+
+            await message.answer(
+                "✅ Оплата найдена!\n\n"
+                "🚀 Premium активирован"
+            )
+
+            return
 
         await message.answer(
-            "✅ Оплата найдена!\n\n"
-            "🚀 Premium активирован"
+            "❌ Оплата не найдена"
         )
 
-        return
+    except Exception as e:
 
-    await message.answer(
-        "❌ Оплата пока не найдена"
-    )
+        await message.answer(
+            f"Ошибка проверки оплаты:\n{e}"
+        )
 
 # AI
 @dp.message(lambda message: message.text and not message.text.startswith("/"))
