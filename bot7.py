@@ -1,3 +1,4 @@
+```python
 import os
 import asyncio
 import sqlite3
@@ -475,3 +476,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+```
