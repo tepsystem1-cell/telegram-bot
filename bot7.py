@@ -222,7 +222,9 @@ async def buy_start(callback: types.CallbackQuery):
     )
 
     await callback.message.answer(
-        "💎 Нажми кнопку для оплаты START тарифа",
+        "💎 Нажми кнопку для оплаты START тарифа\n\n"
+        "После оплаты используй:\n"
+        "/check",
         reply_markup=keyboard
     )
 
@@ -259,7 +261,9 @@ async def buy_pro(callback: types.CallbackQuery):
     )
 
     await callback.message.answer(
-        "🚀 Нажми кнопку для оплаты PRO тарифа",
+        "🚀 Нажми кнопку для оплаты PRO тарифа\n\n"
+        "После оплаты используй:\n"
+        "/check",
         reply_markup=keyboard
     )
 
